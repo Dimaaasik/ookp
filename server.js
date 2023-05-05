@@ -1,38 +1,34 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { ObjectId } = require('mongodb');
-const { connectToDb, getDb } = require('./db');
+const Operator = require('./models/operator.js')
+
 
 const PORT = 3000;
+const URL = "mongodb://localhost:27017/Hospital"
 
 const app = express();
 app.use(express.json());
 
-let db;
-
-connectToDb((err) => {
-    if (!err) {
-        app.listen(PORT, (err) => {
-            err ? console.log(err) : console.log(`listening port ${PORT}`);
-        });
-        db = getDb();
-    } else {
-        console.log(`DB connection error: ${err}`);
-    }
+mongoose
+    .connect(URL)
+    .then(() => console.log('Connected to MongoDB'))
+    .catch((err) => console.log(`DB connection error ${err}`))
+app.listen(PORT, (err) => {
+    err ? console.log(err) : console.log(`listening port ${PORT}`);
 });
+
+
 
 const handleError = (res, error) => {
     res.status(500).json({ error });
 }
 
-app.get('/operators', (req, res) => {
-    const operators = [];
-
-    db
-        .collection('operator')
+app.get('/operator', (req, res) => {
+    Operator
         .find()
         .sort({ title: 1 })
-        .forEach((operator) => operators.push(operator))
-        .then(() => {
+        .then((operators) => {
             res
                 .status(200)
                 .json(operators);
@@ -41,19 +37,15 @@ app.get('/operators', (req, res) => {
 });
 
 app.get('/operators/:id', (req, res) => {
-    if ( ObjectId.isValid(req.params.id)) {
-        db
-            .collection('operator')
-            .findOne({ _id: new ObjectId(req.params.id) })
-            .then((doc) => {
+    Operator
+            .findById(req.params.id)
+            .then((operator) => {
                 res
                     .status(200)
-                    .json(doc);
+                    .json(operator);
             })
             .catch(() => handleError(res, "Something goes wrong..."));
-    } else {
-        handleError(res, "Wrong id");
-    }
+
 });
 
 
@@ -89,7 +81,6 @@ app.post('/operators', (req, res) => {
 });
 
 app.patch('/operators/:id', (req, res) => {
-    console.log(req.params.id)
     if (ObjectId.isValid(req.params.id)) {
         db
             .collection('operator')
